@@ -1,7 +1,7 @@
 # @Author: Kehao Wu <wukehao>
 # @Date:   2017-09-14T15:37:34+08:00
 # @Last modified by:   wukehao
-# @Last modified time: 2017-09-14T16:32:23+08:00
+# @Last modified time: 2017-09-14T16:34:43+08:00
 # 将boson的数据清洗成文本数据，并以空格分割成unigram数据
 
 import os
@@ -20,6 +20,7 @@ with open(filename_boson) as fp:
 tags = []
 pure_text = []
 BIOE_text = []
+word2vec = []
 
 for line in lines:
     line = line.replace('\\n', '')
@@ -49,6 +50,7 @@ for line in lines:
         y[tag['start']] = 'B'
         y[tag['end'] - 1] = 'E'
         tag['y'] = y
+    word2vec.append(' '.join(line))
     pure_text.append(line)
     BIOE_text.append(''.join(y))
 
@@ -67,3 +69,6 @@ with open(os.path.join(filepath_self, '../var/pure_text.data'), 'w') as fp:
 
 with open(os.path.join(filepath_self, '../var/BIOE_text.data'), 'w') as fp:
     fp.write("\n".join(BIOE_text))
+
+with open(os.path.join(filepath_self, '../var/word2vec.data'), 'w') as fp:
+    fp.write("\n".join(word2vec))
