@@ -1,7 +1,7 @@
 # @Author: Kehao Wu <wukehao>
 # @Date:   2017-09-14T15:37:34+08:00
 # @Last modified by:   wukehao
-# @Last modified time: 2017-09-14T16:34:43+08:00
+# @Last modified time: 2017-09-16T07:00:46+08:00
 # 将boson的数据清洗成文本数据，并以空格分割成unigram数据
 
 import os
@@ -46,9 +46,10 @@ for line in lines:
     y = ['O'] * len(line)
     for tag in _tags:
         tag['line'] = line
-        y[tag['start']:tag['end']] = ['I'] * len(tag['name'])
-        y[tag['start']] = 'B'
-        y[tag['end'] - 1] = 'E'
+        if tag.get('tag') == 'person_name':
+            y[tag['start']:tag['end']] = ['I'] * len(tag['name'])
+            y[tag['start']] = 'B'
+            y[tag['end'] - 1] = 'E'
         tag['y'] = y
     word2vec.append(' '.join(line))
     pure_text.append(line)
