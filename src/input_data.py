@@ -1,7 +1,7 @@
 # @Author: wukehao
 # @Date:   2017-09-16T07:01:28+08:00
 # @Last modified by:   wukehao
-# @Last modified time: 2017-09-16T07:33:11+08:00
+# @Last modified time: 2017-09-16T13:49:24+08:00
 # 读取数据
 
 import numpy as np
@@ -24,11 +24,14 @@ def load_x():
     x_txt = list(filter(lambda item: item.strip() != '', x_txt))
     for txt in tqdm(x_txt):
         x = []
-        for t in txt:
+        while len(txt) < 100:
+            txt += " "
+        for t in txt[:100]:
             if t in model:
                 x.append(model[t])
             else:
                 x.append(PADDING)
+
         X.append(x)
 
 
@@ -42,20 +45,25 @@ def load_y():
     print("Begin to generate Y vector.")
     def S2I(s):
         if s == 'B':
-            return 0
+            return [1, 0, 0, 0]
         elif s == 'I':
-            return 1
+            return [0, 1, 0, 0]
         elif s == 'E':
-            return 2
+            return [0, 0, 1, 0]
         else:
-            return 3
+            return [0, 0, 0, 1]
     with open('../var/BIOE_text.data') as fp:
         y_txt = fp.readlines()
 
     Y = []
-    for txt in tqdm(y_txt):
-        Y.append(np.array([S2I(i) for i in txt.strip()], dtype='float32'))
 
+    for txt in tqdm(y_txt):
+        txt = txt.strip()
+        while len(txt) < 100:
+            txt += 'O'
+        txt = txt[:100]
+        Y.append([S2I(i) for i in txt])
+    Y = np.array(Y, dtype='float32')
     with open('../var/Y.pkl', 'wb') as fp:
         pickle.dump(Y, fp)
 
