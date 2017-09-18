@@ -1,7 +1,7 @@
 # @Author: wukehao
 # @Date:   2017-09-10T16:11:31+08:00
 # @Last modified by:   wukehao
-# @Last modified time: 2017-09-16T14:08:51+08:00
+# @Last modified time: 2017-09-18T21:30:44+08:00
 
 
 
@@ -14,18 +14,19 @@ from tqdm import tqdm
 
 class Model:
     def __init__(self, args):
+        print("Current tensorflow version {}".format(tf.__version__))
         self.args = args
         self.input_data = tf.placeholder(tf.float32, [None, args.sentence_length, args.word_dim])
         self.output_data = tf.placeholder(tf.float32, [None, args.sentence_length, args.class_size])
-        fw_cell = tf.contrib.rnn.core_rnn_cell.LSTMCell(args.rnn_size, state_is_tuple=True)
-        fw_cell = tf.contrib.rnn.core_rnn_cell.DropoutWrapper(fw_cell, output_keep_prob=0.5)
-        bw_cell = tf.contrib.rnn.core_rnn_cell.LSTMCell(args.rnn_size, state_is_tuple=True)
-        bw_cell = tf.contrib.rnn.core_rnn_cell.DropoutWrapper(bw_cell, output_keep_prob=0.5)
-        fw_cell = tf.contrib.rnn.core_rnn_cell.MultiRNNCell([fw_cell] * args.num_layers, state_is_tuple=True)
-        bw_cell = tf.contrib.rnn.core_rnn_cell.MultiRNNCell([bw_cell] * args.num_layers, state_is_tuple=True)
+        fw_cell = tf.nn.rnn_cell.LSTMCell(args.rnn_size, state_is_tuple=True)
+        fw_cell = tf.nn.rnn_cell.DropoutWrapper(fw_cell, output_keep_prob=0.5)
+        bw_cell = tf.nn.rnn_cell.LSTMCell(args.rnn_size, state_is_tuple=True)
+        bw_cell = tf.nn.rnn_cell.DropoutWrapper(bw_cell, output_keep_prob=0.5)
+        fw_cell = tf.nn.rnn_cell.MultiRNNCell([fw_cell] * args.num_layers, state_is_tuple=True)
+        bw_cell = tf.nn.rnn_cell.MultiRNNCell([bw_cell] * args.num_layers, state_is_tuple=True)
         words_used_in_sent = tf.sign(tf.reduce_max(tf.abs(self.input_data), reduction_indices=2))
         self.length = tf.cast(tf.reduce_sum(words_used_in_sent, reduction_indices=1), tf.int32)
-        output, _, _ = tf.contrib.rnn.static_bidirectional_rnn(fw_cell, bw_cell,
+        output, _, _ = tf.nn.static_bidirectional_rnn(fw_cell, bw_cell,
                                                tf.unstack(tf.transpose(self.input_data, perm=[1, 0, 2])),
                                                dtype=tf.float32, sequence_length=self.length)
         weight, bias = self.weight_and_bias(2 * args.rnn_size, args.class_size)
@@ -37,6 +38,7 @@ class Model:
         tvars = tf.trainable_variables()
         grads, _ = tf.clip_by_global_norm(tf.gradients(self.loss, tvars), 10)
         self.train_op = optimizer.apply_gradients(zip(grads, tvars))
+
 
     def cost(self):
         cross_entropy = self.output_data * tf.log(self.prediction)
@@ -96,7 +98,7 @@ def train(args):
         sess.run(tf.global_variables_initializer())
         saver = tf.train.Saver()
         if args.restore is not None:
-            saver.restore(sess, 'model.ckpt')
+            saver.restore(sess, '../var/model.ckpt')
             print("model restored")
         for e in range(args.epoch):
             for ptr in range(0, len(train_inp), args.batch_size):
@@ -121,14 +123,29 @@ def train(args):
             #     print("test_b score:")
             #     f1(args, pred, test_b_out, length)
 
+def predict(args):
+    inp = X[:10]
+    model = Model(args)
+    maximum = 0
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+        saver = tf.train.Saver()
+        saver.restore(sess, '../var/model.ckpt')
+        print("model restored")
+        prediction = sess.run(model.prediction, {model.input_data: inp})
+        print(sess.run(tf.argmax(prediction, 2)))
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--word_dim', type=int, default=200, help='dimension of word vector')
 parser.add_argument('--sentence_length', type=int, default=100, help='max sentence length')
 parser.add_argument('--class_size', type=int, default=4, help='number of classes')
-parser.add_argument('--rnn_size', type=int, default=256, help='hidden dimension of rnn')
-parser.add_argument('--num_layers', type=int, default=2, help='number of layers in rnn')
-parser.add_argument('--batch_size', type=int, default=20, help='batch size of training')
+parser.add_argument('--rnn_size', type=int, default=16, help='hidden dimension of rnn')
+parser.add_argument('--num_layers', type=int, default=4, help='number of layers in rnn')
+parser.add_argument('--batch_size', type=int, default=100, help='batch size of training')
 parser.add_argument('--epoch', type=int, default=50, help='number of epochs')
 parser.add_argument('--restore', type=str, default=None, help="path of saved model")
-train(parser.parse_args())
+
+if __name__ == "__main__":
+    train(parser.parse_args())
+    predict(parser.parse_args())
